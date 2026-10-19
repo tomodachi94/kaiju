@@ -98,26 +98,30 @@ else if (project.hasProperty("KAIJU_AUTOCATS_DIR")) {
 // you can also allow removal of the any previous Kaiju install prior to
 // reinstalling by adding -PKAIJU_AUTO_REMOVE
 
-import org.gradle.util.VersionNumber
+import org.gradle.util.GradleVersion
+import java.lang.module.ModuleDescriptor
 
 // Gradle 6.4+ is needed to compile the markdown gradle plugin written in groovy
 // Ghidra 10 requires gradle 6.8 or above
-if (VersionNumber.parse( gradle.gradleVersion ) <= VersionNumber.parse ("6.8.0")) {
+if (GradleVersion.current() <= GradleVersion.version("6.8.0")) {
     throw new GradleException("CERT Kaiju requires at least gradle version 6.8.0. Please update gradle and retry.")
 }
 
 // Export GHIDRA_10_4 and _11_1 for conditional compilation
-def ghidraVersion = project.ext.ghidra_version;
+def ghidraVersion = ModuleDescriptor.Version.parse(project.ext.ghidra_version)
+def ghidra104OrLater = ghidraVersion.compareTo(ModuleDescriptor.Version.parse("10.4")) >= 0
+def ghidra111OrLater = ghidraVersion.compareTo(ModuleDescriptor.Version.parse("11.1")) >= 0
+
 compileJava {
-    options.compilerArgs << '-AGHIDRA_10_4=' + (VersionNumber.parse( ghidraVersion ) >= VersionNumber.parse("10.4")) \
-                         << '-AGHIDRA_11_1=' + (VersionNumber.parse( ghidraVersion ) >= VersionNumber.parse("11.1"))
+    options.compilerArgs <<
+        "-AGHIDRA_10_4=${ghidra104OrLater}" <<
+        "-AGHIDRA_11_1=${ghidra111OrLater}"
 }
+
 compileTestJava {
-    options.compilerArgs << '-AGHIDRA_10_4=' + (VersionNumber.parse( ghidraVersion ) >= VersionNumber.parse("10.4")) \
-                         << '-AGHIDRA_11_1=' + (VersionNumber.parse( ghidraVersion ) >= VersionNumber.parse("11.1"))
-}
-repositories {
-    mavenCentral()
+    options.compilerArgs <<
+        "-AGHIDRA_10_4=${ghidra104OrLater}" <<
+        "-AGHIDRA_11_1=${ghidra111OrLater}"
 }
 
 dependencies {
@@ -153,8 +157,8 @@ buildExtension.exclude '.vscode/**'
 
 task printGhidraDir {
     println 'Using Ghidra install directory ' + ghidraInstallDir
-    println 'Using Java ' + targetCompatibility + ' for Ghidra ' + ghidraVersion
-    println 'Using AUTOCATS test directory ' + autocatsDir
+    println 'Using Java ' + project.targetCompatibility + ' for Ghidra ' + project.ghidraVersion
+    println 'Using AUTOCATS test directory ' + project.autocatsDir
 }
 
 task copyToLib(type: Copy) {
